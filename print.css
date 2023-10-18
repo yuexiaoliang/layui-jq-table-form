@@ -1,0 +1,77 @@
+@media print {
+  .no-print {
+    display: none;
+  }
+
+  .detail-container {
+    padding: 0;
+    margin: 0;
+    color: #000;
+  }
+
+  .detail-container .title {
+    margin: 0 0 30px;
+  }
+
+  .detail-container .layui-table td,
+  .detail-container .layui-table th,
+  .detail-container .layui-table .layui-input,
+  .detail-container .layui-table .layui-textarea {
+    padding: 0 8px;
+    height: 30px;
+    line-height: 30px;
+  }
+
+  .detail-container .layui-table thead tr {
+    background-color: #fff;
+  }
+
+  .detail-container .layui-table td,
+  .detail-container .layui-table th {
+    border-color: #333;
+  }
+
+  .detail-container input {
+    border: 0 !important;
+  }
+
+  /* 所有 input placeholder 不显示 */
+  .detail-container input::-webkit-input-placeholder {
+    opacity: 0;
+  }
+
+  .detail-container .layui-form-item {
+    margin-bottom: 0;
+  }
+
+  .detail-container .row-btns,
+  .detail-container .layui-edge {
+    display: none;
+  }
+
+  .detail-container .form-header,
+  .detail-container .footer {
+    display: flex;
+  }
+
+  .detail-container .form-header input,
+  .detail-container .footer input {
+    padding: 0;
+  }
+
+  .detail-container .layui-col-md3 {
+    width: 5.25cm;
+  }
+
+  .detail-container .layui-col-md4 {
+    width: 7cm;
+  }
+
+  .detail-container .layui-col-md5 {
+    width: 8.75cm;
+  }
+
+  .detail-container .layui-col-md9 {
+    width: 15.75cm;
+  }
+}

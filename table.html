@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <script src="./layui/layui.js"></script>
+    <link rel="stylesheet" href="./layui/css/layui.css" />
+
+    <script src="./jquery/jquery.min.js"></script>
+
+    <link rel="stylesheet" href="./print.css" />
+
+    <style>
+      .detail-container {
+        position: relative;
+        width: 21cm;
+        margin: 0 auto;
+        padding: 0 30px;
+        font-size: 14px;
+        background-color: #fff;
+        color: #333;
+      }
+
+      .detail-container .header {
+        padding: 20px 0;
+      }
+
+      .detail-container .header .print-btn {
+        float: right;
+      }
+
+      .detail-container .config-options {
+        position: absolute;
+        top: 20px;
+        right: 120px;
+      }
+
+      .detail-container .title {
+        margin: 50px 0;
+        text-align: center;
+      }
+
+      .detail-container .section {
+        margin-bottom: 50px;
+      }
+
+      .detail-container .layui-form-label {
+        padding-left: 0;
+        padding-right: 0;
+        width: 70px;
+      }
+
+      .detail-container .layui-input-block {
+        margin-left: 75px;
+      }
+
+      .detail-container .layui-table .col-id {
+        width: 50px;
+      }
+
+      .detail-container .layui-table .col-code {
+        width: 100px;
+      }
+
+      .detail-container .layui-table .col-name {
+        width: 200px;
+      }
+
+      .detail-container .layui-table .col-count {
+        width: 100px;
+      }
+
+      .detail-container .layui-table .col-price {
+        width: 100px;
+      }
+
+      .detail-container .layui-table .col-amount {
+        width: 100px;
+      }
+
+      .detail-container .layui-table .layui-input {
+        border: 0;
+      }
+      .detail-container .layui-table td.no-pd {
+        padding: 0;
+      }
+
+      .detail-container .layui-table input[readonly] {
+        cursor: default;
+      }
+
+      .detail-container .layui-table td,
+      .detail-container .layui-table th,
+      .detail-container .layui-table .layui-input,
+      .detail-container .layui-table .layui-textarea {
+        padding-left: 8px;
+        padding-right: 8px;
+      }
+
+      .detail-container .layui-table .row {
+        position: relative;
+      }
+
+      .detail-container .layui-table .row:hover {
+        background-color: #fff;
+      }
+
+      .detail-container .layui-table .row-btns {
+        position: absolute;
+        padding: 9px 5px;
+        width: 66px;
+        border: 0;
+        cursor: pointer;
+      }
+
+      .detail-container .layui-table .row-btns .btn {
+        font-size: 18px;
+      }
+
+      .detail-container .layui-table .row-btns .btn.delete {
+        color: red;
+      }
+
+      .detail-container .layui-table .row-btns .btn:hover {
+        color: #1e9fff;
+      }
+
+      .detail-container .footer:after {
+        content: '';
+        display: block;
+        clear: both;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="detail-container">
+      <div class="header no-print">
+        <button class="layui-btn layui-btn-normal print-btn">打印</button>
+      </div>
+
+      <h1 class="title">XXXX科技有限公司</h1>
+
+      <form class="layui-form">
+        <div class="config-options no-print">
+          <select placeholder="请选择配置项" lay-filter="config-options-select">
+            <option value="">请选择配置项</option>
+            <option value="010">北京</option>
+            <option value="021">上海</option>
+            <option value="0571">杭州</option>
+          </select>
+        </div>
+        <div class="layui-form-content"></div>
+      </form>
+    </div>
+  </body>
+
+  <script>
+    var layForm;
+    var layDate;
+    var $printBtn = $('.print-btn');
+    var $formContentEl = $('.layui-form-content');
+
+    init();
+
+    function init() {
+      // 默认渲染一条空数据
+      $formContentEl.html(genSectionHtml([{}]));
+
+      // 重新渲染所有表格行
+      rerenderTablesRows();
+
+      // 初始化 layui
+      layuiInit();
+
+      // 监听表格行添加、删除点击事件
+      onTableRowBtnsClick();
+
+      // 监听数量输入框输入
+      onCountInput();
+
+      // 监听打印按钮点击事件
+      onPrintBtnClick();
+    }
+
+    // 初始化 layui
+    function layuiInit() {
+      layui.use(['form', 'laydate'], function () {
+        layForm = layui.form;
+        layDate = layui.laydate;
+
+        // 渲染下拉框
+        renderSelect();
+
+        // 渲染所有日期选择框
+        renderDates();
+
+        // 监听配置项下拉框选择
+        onConfigOptionsSelected();
+
+        // 监听选择商品名称下拉框选择
+        onGoodsNameSelected();
+      });
+    }
+
+    function renderDates(elem) {
+      var dateEls = $('.bill-date');
+
+      dateEls.each(function (index, item) {
+        layDate.render({
+          elem: item,
+          format: 'yyyy-MM-dd',
+          value: new Date()
+        });
+      });
+    }
+
+    function renderSelect() {
+      layForm.render('select');
+    }
+
+    // 监听配置项下拉框选择
+    function onConfigOptionsSelected() {
+      layForm.on('select(config-options-select)', selector);
+
+      function selector(data) {
+        var ids = getUrlParam('ids').split(',');
+
+        // 这里发送 ajax 请求获取数据，然后渲染表格
+        setTimeout(() => {
+          var h = '';
+          for (var i = 0; i < ids.length; i++) {
+            var data = [];
+            for (var j = 0; j < Math.floor(Math.random() * 10) + 1; j++) {
+              data.push({
+                codeValue: 'code' + ids[i] + '-' + j,
+                countValue: Math.floor(Math.random() * 10) + 1,
+                priceValue: Math.floor(Math.random() * 100) + 1,
+                isPriceReadonly: true,
+                isCountReadonly: true,
+                isCodeReadonly: true
+              });
+            }
+
+            h += genSectionHtml(data);
+          }
+
+          $formContentEl.html(h);
+
+          rerenderTablesRows();
+
+          renderSelect();
+          renderDates();
+        }, 100);
+      }
+    }
+
+    // 监听打印按钮点击事件
+    function onPrintBtnClick() {
+      $printBtn.on('click', function () {
+        window.print();
+      });
+    }
+
+    // 监听表格行添加、删除点击事件
+    function onTableRowBtnsClick() {
+      $formContentEl.on('click', function (event) {
+        var $target = $(event.target);
+
+        // 添加行
+        if ($target.hasClass('add')) {
+          addRow($target);
+        }
+
+        // 删除行
+        if ($target.hasClass('delete')) {
+          delRow($target);
+        }
+      });
+    }
+
+    // 监听选择商品名称下拉框选择
+    function onGoodsNameSelected() {
+      layForm.on('select(goods-name)', function (data) {
+        console.log('商品名称选择 =>', data);
+      });
+    }
+
+    // 监听数量输入框输入
+    function onCountInput() {
+      $formContentEl.on('input', function (event) {
+        var $target = $(event.target);
+
+        if (!$target.hasClass('count') && !$target.hasClass('price')) {
+          return;
+        }
+
+        var $row = $target.parents('.row');
+        var $countInput = $row.find('.count');
+        var $priceInput = $row.find('.price');
+        var $amountInput = $row.find('.amount');
+
+        var countValue = $countInput.val();
+        var priceValue = $priceInput.val();
+
+        $amountInput.val(calcTotalAmount(countValue, priceValue));
+      });
+    }
+
+    // 重新渲染所有表格行
+    function rerenderTablesRows() {
+      var $tables = $formContentEl.find('.layui-table');
+
+      $tables.each(function (index, item) {
+        // 首次处理行;
+        rerenderTableRows($(item));
+      });
+    }
+
+    // 重新渲染行
+    function rerenderTableRows($table) {
+      var $rows = $table.find('.row');
+
+      $rows.each(function (index, item) {
+        $(item)
+          .find('.row-id')
+          .text(index + 1);
+      });
+
+      // 如果只有一行，则不显示删除按钮
+      if ($rows.length === 1) {
+        $rows.find('.delete').hide();
+      } else {
+        $rows.find('.delete').show();
+      }
+    }
+
+    // 添加行
+    function addRow($btn) {
+      var $tr = $btn.parents('.row');
+      $tr.after(genTableRowHtml());
+
+      rerenderTableRows($btn.parents('.layui-table'));
+
+      renderSelect();
+    }
+
+    // 删除行
+    function delRow($btn) {
+      var $tbody = $btn.parents('tbody');
+      var $tr = $btn.parents('.row');
+
+      var $codeValue = $tr.find('.code').val();
+      var $nameValue = $tr.find('.name').val();
+      var $countValue = $tr.find('.count').val();
+      var $priceValue = $tr.find('.price').val();
+      var $remarkValue = $tr.find('.remark').val();
+      if ($codeValue || $nameValue || $countValue || $priceValue || $remarkValue) {
+        layer.msg('已有数据，不可删除', { icon: 'error' });
+        return;
+      }
+
+      $tr.remove();
+
+      rerenderTableRows($tbody.parents('.layui-table'));
+
+      renderSelect();
+    }
+
+    // 生成行
+    function genTableRowHtml(options) {
+      var options = options || {};
+      var isCodeReadonly = options.isCodeReadonly;
+      var isPriceReadonly = options.isPriceReadonly;
+      var isCountReadonly = options.isCountReadonly;
+      var codeValue = options.codeValue || '';
+      var countValue = options.countValue || '';
+      var priceValue = options.priceValue || '';
+      var amountValue = calcTotalAmount(countValue, priceValue);
+
+      var tr = `<tr class="row">
+        <td class="row-id">-</td>
+
+        <!-- 商品编码 -->
+        <td class="no-pd">
+          <input type="text" value="${codeValue}" placeholder="${isCodeReadonly ? '' : '请输入'}" ${isCodeReadonly ? 'readonly' : ''} class="layui-input code" />
+        </td>
+
+        <!-- 商品名称 -->
+        <td class="no-pd">
+          <select placeholder="请选择" lay-filter="goods-name name">
+            <option value="">请选择</option>
+            <option value="010">北京</option>
+            <option value="021">上海</option>
+            <option value="0571">杭州</option>
+          </select>
+        </td>
+
+        <!-- 数量 -->
+        <td class="no-pd">
+          <input type="text" value="${countValue}" placeholder="${isCountReadonly ? '' : '请输入'}" ${isCountReadonly ? 'readonly' : ''} class="layui-input count" />
+        </td>
+
+        <!-- 单价 -->
+        <td class="no-pd">
+          <input type="text" value="${priceValue}" class="layui-input price" placeholder="${isPriceReadonly ? '' : '请输入'}" ${isPriceReadonly ? 'readonly' : ''} />
+        </td>
+
+        <!-- 金额 -->
+        <td class="no-pd">
+          <input type="text" value="${amountValue}" class="layui-input amount" readonly />
+        </td>
+
+        <!-- 备注 -->
+        <td class="no-pd">
+          <input type="text" placeholder="请输入" class="layui-input remark" />
+        </td>
+
+        <td class="row-btns">
+          <i class="layui-icon btn add">&#xe654;</i>
+          <i class="layui-icon btn delete">&#xe640;</i>
+        </td>
+      </tr>`;
+
+      return tr;
+    }
+
+    // 生成 section
+    function genSectionHtml(data) {
+      var data = data || [];
+
+      var trs = '';
+
+      for (var i = 0; i < data.length; i++) {
+        var item = data[i];
+
+        trs += genTableRowHtml(item);
+      }
+
+      var tbodyHtml = `<tbody>
+        ${trs}
+        <tr>
+          <td colspan="3"></td>
+          <td colspan="2">实收金额</td>
+          <td colspan="2" class="no-pd">
+            <input type="text" name="title" required lay-verify="required" placeholder="请输入" autocomplete="off" class="layui-input" />
+          </td>
+        </tr>
+      </tbody>`;
+
+      var html = `<div class="section">
+        <div class="layui-row layui-col-space20 form-header">
+          <div class="layui-col-md3">
+            <div class="layui-form-item">
+              <label class="layui-form-label">单据日期：</label>
+              <div class="layui-input-block">
+                <input type="text" class="layui-input bill-date" />
+              </div>
+            </div>
+          </div>
+
+          <div class="layui-col-md4">
+            <div class="layui-form-item">
+              <label class="layui-form-label">购买单位：</label>
+              <div class="layui-input-block">
+                <input type="text" name="title" required lay-verify="required" placeholder="请输入标题" autocomplete="off" class="layui-input" />
+              </div>
+            </div>
+          </div>
+
+          <div class="layui-col-md5">
+            <div class="layui-form-item">
+              <label class="layui-form-label">备注：</label>
+              <div class="layui-input-block">
+                <input type="text" name="title" required lay-verify="required" placeholder="请输入标题" autocomplete="off" class="layui-input" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <table class="layui-table">
+          <col class="col-id" />
+          <col class="col-code" />
+          <col class="col-name" />
+          <col class="col-count" />
+          <col class="col-price" />
+          <col class="col-amount" />
+          <col />
+          <thead>
+            <tr>
+              <th>行号</th>
+              <th>商品编码</th>
+              <th>商品名称</th>
+              <th>数量</th>
+              <th>单价</th>
+              <th>金额</th>
+              <th>单据备注</th>
+            </tr>
+          </thead>
+          ${tbodyHtml}
+        </table>
+
+        <div class="footer">
+          <div class="layui-col-md3">
+            <div class="layui-form-item">
+              <label class="layui-form-label">经手人：</label>
+              <div class="layui-input-block">
+                <input type="text" name="title" required lay-verify="required" placeholder="请输入标题" autocomplete="off" class="layui-input" />
+              </div>
+            </div>
+          </div>
+          <div class="layui-col-md9" style="text-align: right; line-height: 38px">打印日期：2012-12-12</div>
+        </div>
+      </div>`;
+
+      return html;
+    }
+
+    //获取url中的参数
+    function getUrlParam(name) {
+      var reg = new RegExp('(^|&)' + name + '=([^&]*)(&|$)'); //构造一个含有目标参数的正则表达式对象
+      var r = window.location.search.substr(1).match(reg); //匹配目标参数
+      if (r != null) return unescape(r[2]);
+      return null; //返回参数值
+    }
+
+    // 计算总金额
+    function calcTotalAmount(count, price) {
+      return (count * price).toFixed(2);
+    }
+  </script>
+</html>
